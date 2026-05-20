@@ -1,0 +1,4 @@
+.env.local
+uv.lock
+chroma_store/
+__pycache__/
