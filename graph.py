@@ -1,6 +1,7 @@
 # graph.py
 from dotenv import load_dotenv
 import os
+import shutil
 from typing import TypedDict, Annotated, Sequence
 from operator import add as add_messages
 
@@ -10,22 +11,16 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_chroma import Chroma
 from langchain_core.tools import tool
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_google_genai import GoogleGenerativeAIEmbeddings
+
+from model_factory import ModelFactory
 
 load_dotenv(".env.local")
 
 # -------------------- Build your Meeting RAG pipeline --------------------
 def create_workflow():
-    llm = ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash",
-        temperature=0.8,
-        google_api_key=os.getenv("GOOGLE_API_KEY"),
-    )
-    embeddings = GoogleGenerativeAIEmbeddings(
-    model="models/gemini-embedding-001",
-    google_api_key=os.getenv("GOOGLE_API_KEY"),  # or set env var globally
-)
+    model_provider = ModelFactory.create()
+    llm = model_provider.fetch_llm()
+    embeddings = model_provider.fetch_embeddings()
 
     pdf_path = os.getenv("COMPANY_PDF_PATH", "./CompanyInfo.pdf")
     if not os.path.exists(pdf_path):
@@ -40,6 +35,7 @@ def create_workflow():
     pages_split = text_splitter.split_documents(pages)
 
     persist_directory = os.getenv("CHROMA_DIR", "./chroma_store")
+    shutil.rmtree(persist_directory, ignore_errors=True)
     os.makedirs(persist_directory, exist_ok=True)
 
     vectorstore = Chroma.from_documents(
